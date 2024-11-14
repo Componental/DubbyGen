@@ -1,0 +1,15 @@
+.DS_Store
+build/
+source/build*
+examples/*.cpp
+examples/*.h
+examples/*.json
+help/*.cpp
+help/*.h
+help/*.json
+templates/*.cpp
+templates/*.h
+templates/*.json
+patchers/*.cpp
+patchers/*.h
+patchers/*.json

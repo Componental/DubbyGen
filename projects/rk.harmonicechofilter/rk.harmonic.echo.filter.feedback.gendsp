@@ -1,0 +1,193 @@
+{
+	"patcher" : 	{
+		"fileversion" : 1,
+		"appversion" : 		{
+			"major" : 8,
+			"minor" : 6,
+			"revision" : 2,
+			"architecture" : "x64",
+			"modernui" : 1
+		}
+,
+		"classnamespace" : "dsp.gen",
+		"rect" : [ 34.0, 100.0, 1045.0, 983.0 ],
+		"bglocked" : 0,
+		"openinpresentation" : 0,
+		"default_fontsize" : 12.0,
+		"default_fontface" : 0,
+		"default_fontname" : "Arial",
+		"gridonopen" : 1,
+		"gridsize" : [ 15.0, 15.0 ],
+		"gridsnaponopen" : 1,
+		"objectsnaponopen" : 1,
+		"statusbarvisible" : 2,
+		"toolbarvisible" : 1,
+		"lefttoolbarpinned" : 0,
+		"toptoolbarpinned" : 0,
+		"righttoolbarpinned" : 0,
+		"bottomtoolbarpinned" : 0,
+		"toolbars_unpinned_last_save" : 0,
+		"tallnewobj" : 0,
+		"boxanimatetime" : 200,
+		"enablehscroll" : 1,
+		"enablevscroll" : 1,
+		"devicewidth" : 0.0,
+		"description" : "",
+		"digest" : "",
+		"tags" : "",
+		"style" : "",
+		"subpatcher_template" : "",
+		"assistshowspatchername" : 0,
+		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-3",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 1010.0, 126.0, 176.0, 22.0 ],
+					"text" : "in 6 @comment \"Dry/Wet (0-1)\""
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-11",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 830.0, 81.0, 389.0, 22.0 ],
+					"text" : "in 5 @comment \"Q LowPass (0.1 - 10)\" @default 1 @min 0.1 @max 30"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-10",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 650.25, 57.0, 395.0, 22.0 ],
+					"text" : "in 4 @comment \"Q High Pass (0.1 - 10)\" @default 1 @min 0.1 @max 30"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-8",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 470.5, 33.0, 281.0, 22.0 ],
+					"text" : "in 3 @comment \"Low Pass Normalized Frequency\""
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"code" : "History hp_x1(0), hp_x2(0), hp_y1(0), hp_y2(0);\nHistory lp_x1(0), lp_x2(0), lp_y1(0), lp_y2(0);\nHistory dc_prev_in(0), dc_prev_out(0);\n\n// DC Blocker\ndc_R = 0.995;\ndc_y = in1 - dc_prev_in + dc_R * dc_prev_out;\ndc_prev_in = in1;\ndc_prev_out = dc_y;\nsignal = dc_y;\n\n// Frequency scaling (20 Hz to 20000 Hz)\nhp_freq = 20 * pow(1000, in2);\nlp_freq = 20 * pow(1000, in3);\nhp_freq = min(max(hp_freq, 20), 20000);\nlp_freq = min(max(lp_freq, 20), 20000);\n\n// Q value scaling (adjusted for gentler resonance)\nhp_q = min(max(in4, 0.1), 5.0);\nlp_q = min(max(in5, 0.1), 5.0);\n\n// High-pass filter\nhp_w0 = twopi * hp_freq / samplerate;\nhp_cosw0 = cos(hp_w0);\nhp_alpha = sin(hp_w0) / (2 * hp_q);\n\nhp_b0 = (1 + hp_cosw0) / 2;\nhp_b1 = -(1 + hp_cosw0);\nhp_b2 = (1 + hp_cosw0) / 2;\nhp_a0 = 1 + hp_alpha;\nhp_a1 = -2 * hp_cosw0;\nhp_a2 = 1 - hp_alpha;\n\n// Normalize high-pass coefficients\nhp_b0 /= hp_a0;\nhp_b1 /= hp_a0;\nhp_b2 /= hp_a0;\nhp_a1 /= hp_a0;\nhp_a2 /= hp_a0;\n\n// Low-pass filter (adjusted for gentler roll-off)\nlp_w0 = twopi * lp_freq / samplerate;\nlp_cosw0 = cos(lp_w0);\nlp_alpha = sin(lp_w0) / (2 * lp_q);\n\nlp_b0 = (1 - lp_cosw0) / 2;\nlp_b1 = 1 - lp_cosw0;\nlp_b2 = (1 - lp_cosw0) / 2;\nlp_a0 = 1 + lp_alpha;\nlp_a1 = -2 * lp_cosw0;\nlp_a2 = 1 - lp_alpha;\n\n// Normalize low-pass coefficients\nlp_b0 /= lp_a0;\nlp_b1 /= lp_a0;\nlp_b2 /= lp_a0;\nlp_a1 /= lp_a0;\nlp_a2 /= lp_a0;\n\n// High-pass filter implementation\nhp_y0 = hp_b0 * signal + hp_b1 * hp_x1 + hp_b2 * hp_x2 - hp_a1 * hp_y1 - hp_a2 * hp_y2;\n\n// Low-pass filter implementation\nlp_y0 = lp_b0 * hp_y0 + lp_b1 * lp_x1 + lp_b2 * lp_x2 - lp_a1 * lp_y1 - lp_a2 * lp_y2;\n\n// Update delay elements\nhp_x2 = hp_x1;\nhp_x1 = signal;\nhp_y2 = hp_y1;\nhp_y1 = hp_y0;\nlp_x2 = lp_x1;\nlp_x1 = hp_y0;\nlp_y2 = lp_y1;\nlp_y1 = lp_y0;\n\n// Improved gain compensation\nhp_gain = sqrt(1 + pow(hp_q, 2));\nlp_gain = sqrt(1 + pow(lp_q, 2));\ncompensation = 1 / (hp_gain * lp_gain)+0.2;\n\n// Mix filtered and original signal for gentler effect\nmix = in6; // Adjust this value to balance between filtered and original signal\noutput = (lp_y0 * compensation * mix) + (signal * (1 - mix));\n\n// Soft limiting\noutput = tanh(output * 1.2); // Slight boost before limiting to maintain perceived volume\n\nout1 = output;\nout2 = hp_freq;\nout3 = lp_freq;\nout4 = hp_q;\nout5 = lp_q;",
+					"fontface" : 0,
+					"fontname" : "<Monospaced>",
+					"fontsize" : 12.0,
+					"id" : "obj-5",
+					"maxclass" : "codebox",
+					"numinlets" : 6,
+					"numoutlets" : 5,
+					"outlettype" : [ "", "", "", "", "" ],
+					"patching_rect" : [ 111.0, 155.0, 738.0, 673.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-1",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 111.0, 7.0, 129.0, 22.0 ],
+					"text" : "in 1 @comment Signal"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-2",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 290.75, 7.0, 283.0, 22.0 ],
+					"text" : "in 2 @comment \"High Pass Normalized Frequency\""
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-4",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 111.0, 855.0, 35.0, 22.0 ],
+					"text" : "out 1"
+				}
+
+			}
+ ],
+		"lines" : [ 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 0 ],
+					"source" : [ "obj-1", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 3 ],
+					"source" : [ "obj-10", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 4 ],
+					"source" : [ "obj-11", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 1 ],
+					"source" : [ "obj-2", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 5 ],
+					"source" : [ "obj-3", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-4", 0 ],
+					"source" : [ "obj-5", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 2 ],
+					"source" : [ "obj-8", 0 ]
+				}
+
+			}
+ ],
+		"autosave" : 0
+	}
+
+}
